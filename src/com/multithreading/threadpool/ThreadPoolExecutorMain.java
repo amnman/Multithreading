@@ -8,7 +8,7 @@ public class ThreadPoolExecutorMain {
 
     public static void main(String[] args){
 
-        threadPoolExecutor08();
+        threadPoolExecutor01();
     }
 
     /**
