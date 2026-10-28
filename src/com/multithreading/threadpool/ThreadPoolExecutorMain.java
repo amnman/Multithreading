@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
-public class Main {
+public class ThreadPoolExecutorMain {
 
     public static void main(String[] args){
 
-        threadPoolExecutor05();
+        threadPoolExecutor08();
     }
 
     /**
@@ -215,7 +215,7 @@ public class Main {
         }
     }
     /**
-     *
+     * Using the thenCompose method, unlike the thenApplyAsync method, this method executes the function in order
      * **/
     public static void threadPoolExecutor06(){
         try {
@@ -235,14 +235,88 @@ public class Main {
             },threadPoolExecutor);
             System.out.println("Response: "+response.get());
 
+            /**
+             * thenCompose maintains the order of the execution
+             * **/
+
+            CompletableFuture<String> responseAsync01 = CompletableFuture.supplyAsync(()->{
+                return "Then Compose ";
+            },threadPoolExecutor).thenComposeAsync((String resp)->{
+                try{
+                    Thread.sleep(5000);
+                    return CompletableFuture.supplyAsync(()-> resp + " Async Test01 ");
+                }catch (InterruptedException e){
+                    throw new RuntimeException(e);
+                }
+            },threadPoolExecutor);
+
+            CompletableFuture<String> responseAsync02 = CompletableFuture.supplyAsync(()->{
+                return "Then Compose ";
+            },threadPoolExecutor).thenComposeAsync((String resp)->{
+                return CompletableFuture.supplyAsync(()-> resp + " Async Test02 ");
+            },threadPoolExecutor);
+
+            System.out.println("responseAsync01: "+responseAsync01.get());
+            System.out.println("responseAsync02: "+responseAsync02.get());
+
             threadPoolExecutor.shutdown();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
+    /**
+     * thenAccept method can be used as a terminal function for a completableFuture chain. It does not return any value.
+     * We have to use the join() method in order to have a proper execution and ensure the main thread doesn't close before the execution of the thread pool.
+     * **/
+    public static  void threadPoolExecutor07(){
+        try{
+            ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(1,1,10,TimeUnit.MINUTES,new ArrayBlockingQueue<>(10),Executors.defaultThreadFactory(),new ThreadPoolExecutor.AbortPolicy());
+
+            CompletableFuture<Void> res01 = CompletableFuture.supplyAsync(()->{
+                System.out.println("Thread 01: "+Thread.currentThread().getName());
+                return 10;
+            }).thenAcceptAsync((Integer val)->{
+                System.out.println("Value from supplyAsync 01: "+val);
+            },threadPoolExecutor);
+
+            CompletableFuture<Void> res02 = CompletableFuture.supplyAsync(()->{
+                System.out.println("Thread 02: "+Thread.currentThread().getName());
+                return 20;
+            }).thenAcceptAsync((Integer val)->{
+                System.out.println("Value from supplyAsync 02: "+val);
+            },threadPoolExecutor);
+
+            res01.join();
+            res02.join();
+
+            System.out.println("Execution Completed!");
+            threadPoolExecutor.shutdown();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * thenCombine can be used to combine the results of two completableFuture objects.
+     * **/
+    public static void threadPoolExecutor08(){
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(1,1,10,TimeUnit.MINUTES,new ArrayBlockingQueue<>(5),Executors.defaultThreadFactory(),new ThreadPoolExecutor.AbortPolicy());
+
+        CompletableFuture<Integer> resp01 = CompletableFuture.supplyAsync(()->26,threadPoolExecutor);
+
+        CompletableFuture<String> resp02 = CompletableFuture.supplyAsync(()->"Maneesh",threadPoolExecutor);
+
+        CompletableFuture<String> resp03 = resp01.thenCombineAsync(resp02,(Integer r,String s)->r+" "+s);
+
+        try {
+            System.out.println("Final Response: "+resp03.get());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        threadPoolExecutor.shutdown();
+    }
 }
-
-
 
 class CustomThreadFactory implements ThreadFactory{
 
